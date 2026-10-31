@@ -1,0 +1,31 @@
+# One sample line per row: <lang> <text>. Used by tests/integration/soul.test
+en hi everyone, how are you doing?
+en the server is down again
+en what do you think about the new release?
+en i don't know, maybe tomorrow
+en thanks for the help guys
+es hola a todos, ¿qué tal estáis?
+es el servidor se ha vuelto a caer
+es ¿qué opinas de la nueva versión?
+es no sé, quizás mañana
+es gracias por la ayuda
+fr salut tout le monde, ça va ?
+fr le serveur est encore tombé
+fr qu'est-ce que tu penses de la nouvelle version ?
+fr je ne sais pas, peut-être demain
+fr merci pour votre aide
+it ciao a tutti, come state?
+it il server è di nuovo giù
+it cosa ne pensi della nuova versione?
+it non lo so, forse domani
+it grazie per l'aiuto ragazzi
+pt olá pessoal, tudo bem com vocês?
+pt o servidor caiu outra vez
+pt o que você acha da nova versão?
+pt não sei, talvez amanhã
+pt obrigado pela ajuda
+de hallo zusammen, wie geht es euch?
+de der Server ist schon wieder abgestürzt
+de was hältst du von der neuen Version?
+de ich weiß es nicht, vielleicht morgen
+de danke für eure Hilfe

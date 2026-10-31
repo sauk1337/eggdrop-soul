@@ -1,0 +1,3 @@
+# Eggdrop and Tcl expect Unix line endings; packs are UTF-8 text.
+* text=auto eol=lf
+*.pack text eol=lf encoding=utf-8

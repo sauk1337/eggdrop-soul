@@ -1,0 +1,87 @@
+# The runtime soul runs on: config, store, commands, permissions, safety.
+source [file join [file dirname [file normalize [info script]]] harness setup.tcl]
+
+namespace eval ::t {
+    variable base "\[soul\]\nseed = 3\ntimezone = :UTC\nsleep_start = 0\nsleep_end = 0\n\[channel #test\]\nactive = yes\n"
+    proc dcc {text} { sim::dcccmd admin $text }
+}
+
+test rt-1 {config: bad values keep the default and are reported with their line} -setup {
+    testenv::boot "\[soul\]\nmode = loud\nhumor = 400\nnosuch = 1\nidle_after = 5x\n\[channel #test\]\nactive = yes\nsoul.mode = chatty\nseed = 4\n\[weird\]\nx = 1\n"
+} -body {
+    list [soul::rt::cfg soul mode] [soul::rt::cfg soul mode #test] [soul::rt::cfg soul humor] [soul::rt::cfg soul idle_after] \
+         [lmap d $soul::rt::config::diags { list [dict get $d line] [dict get $d sev] }]
+} -result {social chatty 60 1200 {{2 error} {3 error} {4 warning} {5 error} {9 warning} {10 error}}}
+
+test rt-2 {config is never evaluated} -setup {
+    testenv::boot "\[soul\]\nnames = \[exit 1\] \$::env(HOME)\n"
+} -body {
+    soul::rt::cfg soul names
+} -result {{[exit} 1\] {$::env(HOME)}}
+
+test rt-3 {enabled = no: loaded, no binds} -setup { testenv::boot "\[soul\]\nenabled = no\n" } -body {
+    list [soul::rt::state] [llength [lsearch -all -inline $::sim::binds *soul::rt::tramp*]]
+} -result {stopped 0}
+
+test rt-4 {re-sourcing (rehash) does not duplicate binds} -setup { testenv::boot $t::base } -body {
+    set n [llength [lsearch -all -inline $::sim::binds *soul::rt::tramp*]]
+    uplevel #0 [list source [file join $::testenv::root soul.tcl]]
+    list [expr {$n > 5}] [expr {[llength [lsearch -all -inline $::sim::binds *soul::rt::tramp*]] == $n}] [soul::rt::state]
+} -result {1 1 running}
+
+test rt-5 {commands: help lists only what you may use; permissions are enforced} -setup { testenv::boot $t::base } -body {
+    sim::adduser plain "*!*@plain.example" ""
+    sim::msg plain x@plain.example "soul"
+    set plain [sim::out]
+    sim::msg plain x@plain.example "soul mood valence 1"
+    set denied [sim::out]
+    set admin [t::dcc "soul"]
+    list [llength $plain] [expr {[llength $admin] > [llength $plain]}] [lindex $denied 0]
+} -result {3 1 {NOTICE plain :Permission denied (soul.admin).}}
+
+test rt-6 {permissions can be remapped in [permissions]} -setup {
+    testenv::boot "$t::base\[permissions\]\nsoul.admin = -\n"
+} -body {
+    sim::msg anyone x@any.example "soul mood valence 0.9"
+    list [string match "NOTICE anyone :valence +0.90*" [lindex [sim::out] 0]] $::soul::mind::valence
+} -result {1 0.9}
+
+test rt-7 {store: corrupt data is moved aside and soul starts fresh} -setup { testenv::boot $t::base } -body {
+    soul::rt::shutdown
+    set f [file join $::soul_datadir soul.db]
+    set fh [open $f a]; puts $fh "garbage"; close $fh
+    testenv::boot $t::base 1
+    list [soul::rt::state] [llength [glob -nocomplain -directory $::soul_datadir soul.db.corrupt-*]] \
+         [llength [lsearch -all $::sim::logs *corrupt*]]
+} -result {running 1 1}
+
+test rt-8 {memory survives a restart} -setup { testenv::boot $t::base } -body {
+    lassign [soul::memory::learn #test pizza life *!*@p.example] ok
+    testenv::boot $t::base 1
+    list $ok [dict get [soul::memory::recall pizza] text]
+} -result {1 life}
+
+test rt-9 {facts with links or invitations are refused} -body {
+    lmap t {"go to www.spam.example" "see http://x.y" "join #other" "a nice fact" "cheap at bit.ly"} { soul::rt::unsafe_text $t }
+} -result {1 1 1 0 1}
+
+test rt-10 {a broken handler is contained; too many errors switch soul off} -setup { testenv::boot $t::base } -body {
+    proc ::soul::on_topic {args} { error boom }
+    set before [soul::rt::state]
+    for {set i 0} {$i < 25} {incr i} { sim::topic someone #test "topic $i" }
+    list $before [soul::rt::state] [llength [lsearch -all -inline $::sim::binds *soul::rt::tramp*]] \
+         [string match "*boom*" $soul::rt::last_error]
+} -result {running broken 0 1}
+
+test rt-11 {output can never carry extra IRC lines} -setup { testenv::boot $t::base } -body {
+    soul::rt::say #test "hello\r\nQUIT :bye\001"
+    sim::out
+} -result {{PRIVMSG #test :hello} {PRIVMSG #test :QUIT :bye}}
+
+test rt-12 {the example configuration is up to date} -body {
+    catch {exec [info nameofexecutable] [file join $::testenv::root tools example.tcl] --check 2>@1} out
+    set out
+} -result {soul.conf.example is up to date.}
+
+testenv::cleanup
+cleanupTests

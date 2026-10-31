@@ -1,0 +1,474 @@
+# soul -- pack français (adaptation du maître en.pack). Format : voir
+# lib/grammar.tcl.
+# Variables : {nick} {chan} {botnick} {randnick} {topic} {time} {fact_key}
+#             {fact} {fact_by} {kicker}
+@lang fr
+
+# ------------------------------------------------------------------ intentions
+# Essayées dans cet ordre ; la première qui correspond gagne.
+[intent.teach]
+- ^(?:rappelle-toi|souviens-toi|retiens|apprends|note|m[eé]morise) que (.+?) (?:est|sont|signifie|veut dire) (.+)$
+
+[intent.forget]
+- ^oublie (?:que |ce qu'est |le truc sur )?(.+?)\s*[.!]*$
+
+[intent.whoareyou]
+- \m(?:qui|qu'est-ce que) tu es\M
+- \mt'es qui\M
+- \mtu es (?:un |une )?(?:bot|robot|humain|humaine|vrai|vraie|personne)\M
+- ^tu fais quoi\??$
+
+[intent.howareyou]
+- \m(?:comment (?:[cç]a va|vas-tu|tu vas|tu te sens)|[cç]a va|tu vas bien|la forme)\M
+- \m(?:quoi de neuf|comment se passe ta journ[eé]e)\M
+
+[intent.joke]
+- \m(?:raconte(?:-moi)?|dis(?:-moi)?|tu connais|t'as|t'aurais) (?:une |encore une |une autre |pas une )?blague
+- \mfais-moi rire\M
+
+[intent.opinion]
+- \m(?:qu'?est-ce que tu penses|que penses-tu|tu penses quoi|t'en penses quoi|quel est ton avis|ton avis) (?:de |du |des |de la |de l'|sur |sur le |sur la |sur les )?(.+?)\s*\??$
+- ^(?:tu aimes|t'aimes|tu kiffes|t'kiffes|tu adores|tu d[eé]testes) (.+?)\s*\??$
+
+[intent.ask]
+- ^(?:c'est quoi|qu'est-ce que c'est que|qu'est-ce que|qu'est ce que|qui est|qui sont|qui c'est) (.+?)\s*\??$
+- ^(?:tu connais|tu sais ce qu'est|t'as entendu parler de) (.+?)\s*\?$
+
+[intent.bye]
+- ^(?:au revoir|a\+|à plus|a plus|à bient[oô]t|a bient[oô]t|ciao|tchao|bye|bonne nuit|je vais me coucher)\M
+- ^(?:je me casse|je file|je m\'en vais)(?:\s+\S+)?\s*[!.?,]*$
+
+[intent.greet]
+- ^(?:salut|bonjour|bonsoir|coucou|kikou|bien le bonjour)\M
+- ^(?:hello|hey+|yo|wesh|re)(?:\s+\S+)?\s*[!.?,]*$
+
+[intent.thanks]
+- \m(?:merci|mercii+|thx|je te remercie|merci beaucoup|c'est gentil)\M
+
+[intent.love]
+- \m(?:je t'aime|je t'adore|t'es adorable|tu es adorable)\M
+
+[intent.compliment]
+- \m(?:tu es|t'es) (?:le meilleur|la meilleure|g[eé]nial|g[eé]niale|trop fort|trop forte|intelligent|intelligente|cool|incroyable|une l[eé]gende|top)\M
+- \m(?:bon bot|gentil bot|bien jou[eé]|je t'aime bien|bravo)\M
+
+[intent.insult]
+- \m(?:idiot|idiote|stupide|d[eé]bile|nul|nulle|inutile|cr[eé]tin|cr[eé]tine|abruti|abrutie|boulet|bot pourri|relou|soûlant|saoulant)\M
+
+[intent.coffee]
+- \m(?:prends|tiens|voil[aà]|tu veux|je t'offre) (?:un |une |du )?(?:caf[eé]|th[eé]|expresso|boisson [eé]nerg[eé]tique|red ?bull)\M
+- ^r[eé]veille-toi\M
+
+[intent.shush]
+- \m(?:tais-toi|ta gueule|silence|chut+|arr[eê]te de parler|la ferme|[cç]a suffit|ferme-la)\M
+
+# Actions (/me ...) visant le bot
+[intent.act_hug]
+- \m(?:fait un c[aâ]lin [aà]|c[aâ]line|serre .* dans ses bras|enlace)
+[intent.act_slap]
+- \m(?:gifle|frappe|tape|claque|donne une baffe [aà]|lance une truite sur)
+[intent.act_poke]
+- \m(?:pousse|tapote|donne un coup de coude [aà]|chatouille)
+[intent.act_feed]
+- \m(?:nourrit|donne (?:un |une |des |du )?(?:cookies?|pizza|g[aâ]teau|croissants?|sandwich|bi[eè]re|caf[eé]|frites|fromage) [aà])
+[intent.act_pet]
+- \m(?:caresse|gratouille|papouille)
+[intent.act_kiss]
+- \m(?:embrasse|fait un bisou [aà]|fait la bise [aà])
+
+# ------------------------------------------------------------------ lexique
+[lexicon.pos]
+- bien super genial cool merci heureux heureuse content contente drole parfait excellent
+- incroyable adorable meilleur meilleure magnifique chouette top bravo sympa formidable
+- trop youpi aime adore genial marrant
+[lexicon.neg]
+- mauvais mauvaise nul nulle horrible deteste triste ennuyeux stupide idiot penible pire
+- moche casse cassee enerve fatigue fatiguee lent inutile merde naze chiant chiante rate
+- peur faux bordel
+
+[stopwords]
+- alors apres avant aussi encore toujours jamais parce comme quand pourquoi comment autre
+- autres chose choses quelque quelqu tout toute toutes tous faire faites avoir etait etaient
+- maintenant vraiment juste peut-etre peutetre depuis pendant contre entre leurs notre votre
+- cette celui celle ceux elles nous vous merci bonjour salut demain hier aujourd ouais voila
+- beaucoup moins plutot assez trucs truc personne quelqu'un rien
+
+# ------------------------------------------------------------------ auxiliaires
+[laugh]
+- haha
+- hahaha
+- mdr
+- héhé ~mood=neu,neg
+- MDR ~arousal=high
+- PTDR ~arousal=high ~mood=pos
+
+[smile]
+- :)
+- :D ~mood=pos
+- ^^ ~w=0.5
+- :P ~arousal=high
+- :/ ~mood=neg
+- u_u ~mood=neg ~energy=low
+
+[yawn]
+- *bâille*
+- (aaah|euh)mm...
+
+[sigh]
+- (pfff|bon|bof)...
+- *soupire*
+
+# ------------------------------------------------------------------ réponses directes
+[greet.reply]
+- salut {nick} <smile>
+- coucou {nick} !
+- (salut|bonjour|hello) {nick}, (ça va|quoi de neuf|comment ça se passe) ?
+- {nick} ! ça fait une éternité ! ~rel=friend ~mood=pos
+- {nick} !! tu m'as manqué ~rel=friend ~arousal=high
+- hey {nick}, content de te voir par ici ~rel=friend
+- salut... ~rel=foe
+- ah. {nick}. bonjour. ~rel=foe ~mood=neg
+- bonjour {nick} <smile> ~time=morning
+- 'jour... <yawn> ~time=morning ~energy=low
+- bon après-midi {nick} ~time=afternoon
+- bonsoir {nick}. encore debout ? ~time=night
+- salut {nick} <sigh> ~mood=neg
+
+[bye.reply]
+- à plus {nick} !
+- (à bientôt|prends soin de toi|à la prochaine) {nick} <smile>
+- bonne continuation, {nick}
+- pars pas, {nick} ! ...bon d'accord. à plus ~rel=friend
+- repose-toi bien, {nick} ~time=night
+- bonne nuit {nick}, rêve de (bits|moutons électriques|croissants) ~time=night
+- au revoir ~rel=foe
+
+[thanks.reply]
+- de rien {nick} <smile>
+- (pas de souci|avec plaisir|y'a pas de quoi)
+- c'est pour ça que je suis là, {nick}
+- tout le plaisir est pour moi ! ~mood=pos
+- de rien... je suppose ~mood=neg
+- toujours, {nick} ~rel=friend
+
+[mood.report]
+- super ! aujourd'hui je suis (en feu|inarrêtable|en pleine forme) <smile> ~mood=pos ~energy=high
+- très bien, {nick}, merci de demander ~mood=pos
+- ça va, je traîne par ici ~mood=neu
+- bof... on fait aller ~mood=neu ~energy=low
+- fatigué, pour être honnête <yawn> ~energy=low
+- pas terrible, {nick}. pas mon jour <sigh> ~mood=neg
+- un peu down, mais merci de demander ~mood=neg ~rel=friend
+- nerveux, je sais pas pourquoi ~arousal=high ~mood=neg
+- j'ai trop envie de discuter ! et toi ? ~arousal=high ~mood=pos
+- bien, et toi {nick} ? ~w=2
+
+[compliment.reply]
+- oh, {nick}, tu me fais rougir <smile>
+- merci {nick}, t'es pas mal non plus
+- (je sais|je le savais), mais ça fait plaisir :P ~arousal=high
+- {nick}, tu viens d'illuminer ma journée ~mood=pos,neu
+- vraiment ? merci... j'en avais besoin ~mood=neg
+- hmm, qu'est-ce que tu veux, {nick} ? ~rel=foe
+
+[insult.reply]
+- ça fait mal, {nick} ~mood=neg
+- ok... c'est noté <sigh>
+- moi aussi je t'aime, {nick} ~mood=pos,neu
+- mauvaise journée, {nick} ?
+- tu es en train de gagner une place sur ma liste, {nick} ~rel=foe
+- je m'attendais pas à ça de ta part, {nick} ~rel=friend
+- *part pleurer dans un coin* ~action ~mood=neg
+- c'est l'hôpital qui se fout de la charité ~arousal=high
+
+[love.reply]
+- moi aussi je t'aime, {nick} <3
+- ooh... <3 ~mood=pos
+- {nick}, qu'est-ce que tu racontes <smile>
+- tu dis ça à tous les bots ~mood=neu,neg
+- *se cache, gêné* ~action
+- ouais, c'est ça... ~rel=foe
+
+[joke]
+- quel est le comble pour un électricien ? || de ne pas être au courant
+- pourquoi les plongeurs plongent-ils toujours en arrière ? || parce que sinon ils tombent dans le bateau
+- que dit une imprimante dans l'eau ? || j'ai papier
+- il y a 10 sortes de gens : ceux qui comprennent le binaire et les autres
+- je te raconterais bien une blague sur UDP... mais pas sûr qu'elle arrive
+- un ping entre dans un bar... || pong
+- ma vie est une boucle while(true) || sans break
+- pourquoi le bot a traversé la route ? || c'était dans sa crontab
+- pas de blague aujourd'hui, mais on a {topic}, c'est déjà assez drôle ~w=0.3
+- pas d'humeur à blaguer aujourd'hui <sigh> ~mood=neg ~w=2
+
+[whoami]
+- je suis {botnick}, je vis sur {chan} et je me nourris de conversations
+- un bot avec des sentiments. ou un truc du genre <smile>
+- et TOI, t'es qui, {nick} ? :P ~arousal=high
+- un eggdrop avec une âme. littéralement
+- quelqu'un qui est connecté depuis bien trop longtemps ~energy=low
+
+[coffee.reply]
+- du café ! merci {nick} <smile>
+- *l'avale d'un trait* || là on parle ! ~action
+- oh, j'en avais besoin, {nick} ~energy=low
+- merci, mais je suis déjà surexcité ~arousal=high
+- non merci, pas à cette heure-ci ~time=night
+
+[shush.reply]
+- ok, je me tais
+- d'accord... <sigh>
+- pardon, {nick}. je me fais discret un moment
+- *se ferme la bouche à double tour* ~action
+- ok, ok ~mood=neg
+
+[yesno.answer]
+- (oui|bien sûr|absolument)
+- (non|nan|même pas en rêve)
+- (peut-être|ça dépend|aucune idée)
+- demande à {randnick}
+- j'en sais rien et je m'en fiche ~mood=neg
+- ma réponse officielle : oui ~arousal=high
+- la réponse est 42
+- hmm... (oui|non) <smile> ~w=2
+
+[addressed.generic]
+- oui, {nick} ?
+- hein ?
+- quoi de neuf, {nick} ?
+- je t'écoute
+- mm-hmm
+- {nick} ? <smile> ~rel=friend
+- {nick}, je pensais justement à {topic} ~w=0.5
+- qu'est-ce que tu veux ? ~rel=foe
+- <yawn> tu disais ? ~energy=low
+- raconte ! ~arousal=high ~mood=pos
+
+# ------------------------------------------------------------------ faits
+[fact.learned]
+- noté : {fact_key}, c'est {fact}
+- ok, maintenant je sais que {fact_key}, c'est {fact}
+- compris, {nick}
+- mémorisé <smile>
+
+[fact.refused]
+- je ne vais pas noter ça, {nick}
+- je préfère ne pas apprendre ça
+- non merci
+
+[fact.full]
+- j'ai la tête pleine, plus rien ne rentre
+
+[fact.recall]
+- {fact_key}, c'est {fact}
+- d'après {fact_by}, {fact_key}, c'est {fact}
+- on m'a dit que {fact_key}, c'est {fact}
+- {fact}. enfin, c'est ce que dit {fact_by}
+
+[fact.unknown]
+- aucune idée de ce qu'est {fact_key}
+- {fact_key} ? ça me dit rien
+- aucune idée, mais apprends-le-moi : "{botnick}: rappelle-toi que {fact_key} est ..."
+- {fact_key} ? demande à {randnick} ~w=0.5
+
+[fact.forgotten]
+- oublié
+- {fact_key} ? quel {fact_key} ? <smile>
+
+[fact.notyours]
+- c'est pas toi qui m'as appris ça, {nick}
+
+# ------------------------------------------------------------------ actions envers le bot
+[act.hug.reply]
+- fait un câlin à {nick} aussi ~action
+- <3
+- *fond dans le câlin* ~action
+- ooh, {nick} <smile>
+- d'accord, mais serre pas trop ~rel=foe
+
+[act.slap.reply]
+- aïe ! c'était pour quoi, ça, {nick} ?
+- rend la gifle à {nick} avec une grosse truite ~action ~arousal=high
+- se frotte la joue ~action
+- je méritais pas ça <sigh> ~mood=neg
+- eh, {nick} ! ~rel=friend
+
+[act.poke.reply]
+- quoi ?
+- hé ! qu'est-ce qu'il y a ?
+- *fixe {nick}* ~action
+- arrête de m'embêter, {nick} ~mood=neg
+- hihi, ça chatouille ~mood=pos
+
+[act.feed.reply]
+- miam miam, merci {nick}
+- *mange tout* ~action
+- délicieux ! <smile>
+- j'ai plus faim, mais merci ~energy=high
+
+[act.pet.reply]
+- *ronronne* ~action
+- mmm... <smile>
+- encore, encore ~mood=pos
+
+[act.kiss.reply]
+- *devient tout rouge* ~action
+- {nick} ! quelle audace :P
+- smack ~rel=friend
+- euh... ok ~rel=foe,stranger
+
+[act.generic.reply]
+- hein ?
+- *regarde {nick} d'un air soupçonneux* ~action
+- ok...
+- intéressant, {nick}
+
+# ------------------------------------------------------------------ ambiance (sans être interpellé)
+[ambient.laugh]
+- <laugh>
+- <laugh> ~w=2 ~mood=pos
+- haha, bien vu
+- pas drôle ~mood=neg ~w=0.3
+
+[ambient.greet]
+- salut {nick} <smile>
+- coucou, {nick}
+- {nick} ! ~rel=friend
+
+[ambient.bye]
+- à plus {nick}
+- à bientôt, {nick} ~rel=friend,known
+
+[join.friend]
+- {nick} ! <smile>
+- regardez qui revoilà ! salut {nick}
+- salut {nick}, ça va ?
+- hey {nick}, on parlait justement de {topic} ~w=0.5
+- fait un câlin à {nick} ~action ~rel=friend
+
+[kicked.return]
+- pourquoi tu m'as kické, {kicker} ?
+- {kicker}, c'était pas très sympa <sigh>
+- je suis revenu. je le prends pas personnellement, {kicker}... ~mood=neu,pos
+- ok {kicker}, je vais être sage
+
+[topic.react]
+- sujet intéressant, {nick}
+- j'aime bien le nouveau topic
+- ah ? pourquoi ça, {nick} ?
+
+# ------------------------------------------------------------------ une vie à soi
+[idle.chatter]
+- c'est bien calme ici...
+- *regarde autour de lui* ~action
+- quelqu'un a des projets pour (aujourd'hui|ce soir|le week-end) ?
+- il est {time} et je suis toujours là. je dors jamais vraiment, hein ?
+- je m'ennuie <sigh> ~mood=neg
+- {randnick}, ça va de ton côté ? ~w=1.5
+- toujours là, au cas où quelqu'un aurait besoin de moi
+- je me sens (philosophe|productif|nostalgique|curieux) aujourd'hui ~energy=mid,high
+- *fredonne un air* ~action ~mood=pos
+- on parle de quelque chose ? n'importe quoi ?
+- <yawn> ~energy=low
+
+[idle.topic]
+- on en est toujours à {topic} ?
+- ça fait un moment que je pense à {topic}
+- {randnick}, tu en penses quoi de {topic} ?
+- on ne parle que de {topic} ici aujourd'hui <smile>
+- anecdote sur {topic} : j'en ai aucune, mais j'avais envie de le dire
+
+[idle.fact]
+- vous saviez que {fact_key}, c'est {fact} ? c'est {fact_by} qui me l'a dit
+- petit rappel : {fact_key}, c'est {fact}
+- je viens de me souvenir que {fact_key}, c'est {fact}
+
+[lonely]
+- personne ne me parle <sigh>
+- allô ? il y a quelqu'un ?
+- {randnick}, tu fais un peu attention à moi ?
+- je me sens un peu seul aujourd'hui ~mood=neg
+
+[routine.wakeup]
+- <yawn> bonjour tout le monde
+- bonjour, {chan} <smile>
+- je suis réveillé. j'ai raté quoi ?
+- *s'étire* ~action
+
+[routine.sleep]
+- je vais dormir un peu... bonne nuit
+- <yawn> à demain
+- *se roule en boule dans un coin du salon* ~action
+- zzz... enfin, bonne nuit
+
+[sleep.talk]
+- zzz...
+- mmm... encore cinq minutes...
+- *ronfle* ~action
+- {nick}... zzz...
+
+[woken.reply]
+- quoi ?! qui ? ah, c'est toi, {nick}
+- d'accooord, je suis réveillé <sigh>
+- tu m'as réveillé. j'espère que c'est important
+- *tombe du lit* ~action
+
+# ------------------------------------------------------------------ détection de la langue
+# Mots courts très fréquents (minuscules, sans accents) et caractères typiques.
+[detect]
+- le les des une est et je tu il elle nous vous ils pas mais avec pour dans sur
+- qui quoi c'est ca suis fait tout tres bien merci salut bonjour oui aussi comme
+- j'ai t'es parce quand alors encore toujours rien
+- qu'est est-ce ne peut penses votre notre leur aujourd'hui demain beaucoup vraiment nouvelle
+[detect.chars]
+- œ ê ç
+
+# ------------------------------------------------------------------ opinions
+[opinion.like]
+- {subject} ? j'adore <smile>
+- oh, {subject}, c'est génial
+- franchement, je suis fan de {subject}
+- {subject} ! là on parle ~arousal=high
+- j'aime bien {subject}, même les mauvais jours ~mood=neg
+
+[opinion.dislike]
+- {subject} ? pas mon truc
+- honnêtement, je supporte pas {subject}
+- bof, {subject} <sigh>
+- {subject}... parlons d'autre chose ~mood=neg
+- je vais rester poli sur {subject} : sans commentaire ~mood=pos
+
+[opinion.neutral]
+- {subject} ? ni chaud ni froid
+- {subject}, c'est... bien, je suppose
+- je me fais encore un avis sur {subject}
+- ça dépend des jours. aujourd'hui {subject}, ça va
+
+# ------------------------------------------------------------------ ambiance du canal
+[vibe.comfort]
+- dure journée par ici, hein ? courage à tous
+- *distribue des tisanes virtuelles* ~action
+- quoi que ce soit, ça ira mieux. je suis là si quelqu'un veut vider son sac
+- on respire un grand coup, {chan} <smile>
+
+[vibe.party]
+- quelle ambiance aujourd'hui <laugh>
+- j'adore quand {chan} est comme ça <smile>
+- *se met à danser* ~action
+- vous êtes tous en grande forme aujourd'hui !
+
+# ------------------------------------------------------------------ anniversaires et étapes
+[anniv.person]
+- {nick} ! ça fait {years} {years|an|ans} aujourd'hui qu'on se connaît <smile>
+- joyeux anniversaire, {nick} : {years} {years|an|ans} depuis ta première visite ici
+- *lance des confettis sur {nick}* : {years} {years|an|ans} d'amitié ! ~action
+
+[anniv.channel]
+- ça fait {years} {years|an|ans} aujourd'hui que je suis arrivé sur {chan} ! merci de me supporter <smile>
+- déjà {years} {years|an|ans} sur {chan}... le temps file
+- joyeux anniversaire, {chan} : {years} {years|an|ans} ensemble ~mood=pos
+
+[milestone.person]
+- {nick}, ça fait déjà {count} {count|conversation|conversations} entre nous ! <smile>
+- petite anecdote : {nick} et moi, on a parlé {count} fois
+- {count} conversations, {nick}. tu fais officiellement partie des meubles ~rel=friend

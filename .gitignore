@@ -1,0 +1,7 @@
+# runtime data and local configuration
+soul-data/
+soul.conf
+*.db
+*.db.tmp
+*.corrupt-*
+__pycache__/

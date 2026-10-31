@@ -1,0 +1,381 @@
+# SOUL personality engine.
+source [file join [file dirname [file normalize [info script]]] harness setup.tcl]
+
+namespace eval ::t {
+    variable base {
+[soul]
+enabled = yes
+seed = 7
+typos = no
+sleep_start = 0
+sleep_end = 0
+timezone = :UTC
+[channel #test]
+soul.active = yes
+}
+    proc boot {{extra ""}} {
+        variable base
+        testenv::boot "$base$extra"
+        sim::enter pepe pepe@p.example #test
+        sim::enter ana ana@a.example #test
+        sim::out
+    }
+    # Say something and let typing delays elapse; returns the bot's lines.
+    proc talk {nick text {wait 15}} {
+        sim::pub $nick #test $text
+        sim::advance $wait
+        return [lsearch -all -inline -glob [sim::out] "PRIVMSG*"]
+    }
+    # Retry (spacing attempts to respect rate limits) until output appears.
+    proc until_reply {nick text {tries 5}} {
+        for {set i 0} {$i < $tries} {incr i} {
+            set o [talk $nick $text]
+            if {[llength $o]} { return $o }
+            sim::advance 20
+        }
+        return {}
+    }
+    proc last_why {} { lindex [soul::behave::explain #test 1] 0 }
+}
+
+test soul-1 {module loads with all bundled packs and no pack problems} -setup { t::boot } -body {
+    list [soul::rt::state] [llength $::soul::grammar::diags] \
+         [expr {"en" in [dict keys $::soul::grammar::syms]}] [soul::rt::cfg soul lang #test]
+} -result {running 0 1 en}
+
+test soul-2 {answers a greeting addressed by name, in English by default} -body {
+    set o [t::until_reply pepe "hi Meepo"]
+    list [llength $o] [string match "*reply.greet*" [t::last_why]]
+} -result {1 1}
+
+test soul-3 {learns facts explicitly taught and recalls them with attribution} -body {
+    t::until_reply pepe "Meepo: remember that coffee is life"
+    set f [soul::memory::recall coffee]
+    sim::advance 60
+    set o [t::until_reply ana "Meepo: what is coffee?"]
+    list [dict get $f text] [lindex [dict get $f by] 1] [string match "*life*" [join $o]]
+} -result {life pepe 1}
+
+test soul-4 {refuses facts that the anti-abuse rules flag (links)} -body {
+    sim::advance 60
+    t::talk pepe "Meepo: remember that deals is bit.ly/cheap"
+    soul::memory::recall deals
+} -result {}
+
+test soul-5 {"shut up" is obeyed; fact questions are still answered} -body {
+    sim::advance 60
+    t::until_reply pepe "Meepo: shut up"
+    set q [soul::mind::is_quiet #test]
+    set a [t::talk ana "Meepo: hi"]
+    sim::advance 30
+    set b [t::until_reply ana "Meepo: what is coffee?"]
+    list $q $a [string match "*life*" [join $b]]
+} -result {1 {} 1}
+
+test soul-6 {opt-out: forgotten and never answered} -setup { t::boot } -body {
+    t::talk pepe "Meepo: hello"
+    sim::pub pepe #test "!soul ignoreme"
+    set n [sim::out]
+    set r {}
+    for {set i 0} {$i < 3} {incr i} { lappend r {*}[t::talk pepe "Meepo: hi"]; sim::advance 30 }
+    list [string match "*forgotten you*" [join $n]] $r \
+         [soul::memory::opted_out *!*@p.example] [dict exists $::soul::memory::rel *!*@p.example]
+} -result {1 {} 1 0}
+
+test soul-7 {ignores bots, services and command lines} -setup { t::boot } -body {
+    sim::adduser otherbot "*!*@bot.example" b
+    sim::enter robo r@bot.example #test
+    sim::enter Q TheQBot@CServe.quakenet.org #test
+    set before [llength [soul::behave::explain #test 20]]
+    t::talk robo "Meepo: hi"
+    t::talk Q "Meepo: hello"
+    t::talk pepe "!help"
+    expr {[llength [soul::behave::explain #test 20]] - $before}
+} -result 0
+
+test soul-8 {bot-loop protection: one person gets at most 4 replies a minute} -setup { t::boot } -body {
+    set n 0
+    for {set i 0} {$i < 10} {incr i} {
+        sim::pub pepe #test "Meepo: what is coffee number $i?"
+        sim::sleep_ms 200
+    }
+    sim::advance 20
+    llength [lsearch -all -inline -glob [sim::out] "PRIVMSG*"]
+} -result 4
+
+test soul-9 {injection: no CTCP smuggling, no code evaluation} -setup { t::boot } -body {
+    t::talk pepe "Meepo: remember that x is \001ACTION pwns\001"
+    set a [soul::memory::recall x]
+    sim::advance 60
+    t::until_reply pepe "Meepo: remember that y is \[die\] and \$::env(PATH)"
+    sim::advance 60
+    set o [t::until_reply ana "Meepo: what is y?"]
+    list $a [string match {*\[die\] and $::env(PATH)*} [join $o]] [string first "\001" [join $o]]
+} -result {{} 1 -1}
+
+test soul-10 {render strips control characters and unknown placeholders} -body {
+    soul::grammar::render "hi {nick} {nosuch}!" [dict create nick "a\001b\r\nc"]
+} -result {hi ab c !}
+
+test soul-11 {grammar: choices, references, conditions, missing variables, depth limit} -body {
+    soul::grammar::load_text {
+@lang zz
+[t.root]
+- A <t.sub> (x|x)
+[t.sub]
+- happy ~mood=pos
+- sad ~mood=neg
+[t.need]
+- about {topic} ~w=100
+- plain
+[t.loop]
+- <t.loop>!
+} test
+    set r1 [lindex [soul::grammar::expand zz t.root {mood pos}] 0]
+    set r2 [lindex [soul::grammar::expand zz t.root {mood neg}] 0]
+    set r3 [lindex [soul::grammar::expand zz t.need {have {nick}}] 0]
+    set r4 [lindex [soul::grammar::expand zz t.loop {}] 0]
+    list $r1 $r2 $r3 [string length $r4]
+} -result {{A happy x} {A sad x} plain 7}
+
+test soul-12 {reinforcement: laughter rewards, "shut up" punishes} -setup { t::boot } -body {
+    soul::mind::open_feedback #test reply.joke 0
+    t::talk ana "hahaha"
+    set up [soul::mind::weight #test reply.joke]
+    soul::mind::open_feedback #test spont.idle 1
+    sim::advance 30
+    t::talk ana "Meepo: shut up"
+    list $up [soul::mind::weight #test spont.idle]
+} -result {1.15 0.85}
+
+test soul-13 {emotions apply even when it chooses not to answer} -setup { t::boot } -body {
+    set v0 $::soul::mind::valence
+    t::talk pepe "Meepo you are useless"
+    list [expr {$::soul::mind::valence < $v0}] \
+         [expr {[dict get [soul::memory::get_rel *!*@p.example] aff] < 0}]
+} -result {1 1}
+
+test soul-14 {falls asleep at night, mumbles, wakes up when poked repeatedly} -setup {
+    t::boot "\[soul\]\nsleep_start = 0\nsleep_end = 6\n"
+} -body {
+    sim::advance [expr {25 * 60}]
+    set slept $::soul::mind::asleep
+    t::talk pepe "Meepo: hi"
+    t::talk pepe "Meepo: hey"
+    set still $::soul::mind::asleep
+    set o [t::talk pepe "Meepo: WAKE UP"]
+    list $slept $still $::soul::mind::asleep [string match "*woken*" [t::last_why]] [llength $o]
+} -result {1 1 0 1 1}
+
+test soul-15 {small talk after a silence, never more than two unanswered lines} -setup {
+    t::boot "\[soul\]\nextraversion = 100\n\[channel #test\]\nsoul.mode = chatty\nsoul.idle_after = 60s\n"
+} -body {
+    t::talk pepe "anyone around? the database migration broke again"
+    sim::advance [expr {90 * 60}]
+    set lines [lsearch -all -inline -glob [sim::out] "PRIVMSG #test*"]
+    expr {[llength $lines] >= 1 && [llength $lines] <= 2}
+} -result 1
+
+test soul-16 {never talks to an empty room} -setup {
+    t::boot "\[soul\]\nextraversion = 100\n\[channel #test\]\nsoul.mode = chatty\nsoul.idle_after = 60s\n"
+} -body {
+    sim::advance [expr {90 * 60}]
+    lsearch -all -inline -glob [sim::out] "PRIVMSG #test*"
+} -result {}
+
+test soul-17 {simulation mode logs instead of speaking} -setup {
+    t::boot "\[channel #test\]\nsoul.simulate = yes\n"
+} -body {
+    t::talk pepe "Meepo: remember that tea is nice"
+    t::talk pepe "Meepo: what is tea?"
+    list [lsearch -all -inline -glob [sim::out] "PRIVMSG*"] [expr {[llength $::soul::express::simlog] >= 1}]
+} -result {{} 1}
+
+test soul-18 {kicks hurt the relationship and are remembered on rejoin} -setup { t::boot } -body {
+    sim::enter boss boss@b.example #test 1
+    sim::kick boss #test $::botnick "out"
+    sim::enter $::botnick bot@meepo.users.quakenet.org #test 1
+    sim::advance 15
+    list [expr {[dict get [soul::memory::get_rel *!*@b.example] aff] < 0}] \
+         [string match "*rejoined after kick by boss*" [t::last_why]] [soul::memory::relclass *!*@b.example]
+} -result {1 1 foe}
+
+
+test soul-20 {typing delay: nothing is sent instantly} -setup { t::boot } -body {
+    sim::pub pepe #test "Meepo: remember that chess is a game"
+    set now [lsearch -all -inline -glob [sim::out] "PRIVMSG*"]
+    sim::advance 15
+    list $now [llength [lsearch -all -inline -glob [sim::out] "PRIVMSG*"]]
+} -result {{} 1}
+
+test soul-21 {topics are aggregated words only, without nicks or stopwords} -setup { t::boot } -body {
+    foreach i {1 2 3} { t::talk ana "the kubernetes cluster died again ($i), ana" }
+    set t [lmap x [soul::memory::top_topics #test 5] {lindex $x 0}]
+    list [expr {"kubernetes" in $t}] [expr {"again" in $t}] [expr {"ana" in $t}]
+} -result {1 0 0}
+
+test soul-22 {admin tools: status, why, test; no state leaks to channels; permissions} -setup { t::boot } -body {
+    t::talk pepe "Meepo: hi"
+    sim::pub pepe #test "!soul status"
+    set pub [sim::out]
+    set st [sim::dcccmd admin "soul status #test"]
+    set why [sim::dcccmd admin "soul why #test"]
+    set tst [sim::dcccmd admin "soul test #test Meepo: remember that a is b"]
+    sim::adduser plain "*!*@plain.example" p
+    set denied [sim::dcccmd plain "soul mood valence 1"]
+    list [expr {![string match "*Mind:*" [join $pub]]}] [string match "Mind:*" [lindex $st 0]] \
+         [string match "*reply.greet*" [join $why]] [string match "*intent=teach groups=\\\[a | b\\\]*" [join $tst]] $denied
+} -result {1 1 1 1 {{Permission denied (soul.admin).}}}
+
+test soul-23 {memory, mood and learning survive a restart} -setup { t::boot } -body {
+    t::until_reply pepe "Meepo: remember that tcl is fun"
+    sim::dcccmd admin "soul mood valence 0.8"
+    soul::mind::reward #test reply.joke 1
+    soul::rt::shutdown
+    testenv::boot "$t::base" 1
+    list [dict get [soul::memory::recall tcl] text] \
+         [expr {$::soul::mind::valence > 0.5}] [soul::mind::weight #test reply.joke] \
+         [expr {[dict get [soul::memory::get_rel *!*@p.example] n] > 0}]
+} -result {fun 1 1.15 1}
+
+test soul-24 {every bundled language pack matches the English master} -body {
+    lassign [list [catch {exec [info nameofexecutable] [file join $::testenv::root tools soulpack.tcl] 2>@1} out] $out] code out
+    list $code [lindex [split [string trim $out] \n] end]
+} -result {0 {All packs OK.}}
+
+test soul-25 {actions: only the first part is a /me, without doubled asterisks} -setup { t::boot } -body {
+    soul::express::utter #test "*gulps it down* || now we're talking" 1         [dict create id reply.coffee chan #test spont 0 force 0]
+    sim::advance 20
+    lsearch -all -inline -glob [sim::out] "PRIVMSG*"
+} -result [list "PRIVMSG #test :ACTION gulps it down" "PRIVMSG #test :now we're talking"]
+
+test soul-26 {English stopwords never become topics, whatever the channel language} -setup {
+    t::boot "\[channel #test\]
+soul.lang = de
+"
+} -body {
+    foreach i {1 2 3} { t::talk ana "the pipeline failed again because nobody checked $i" }
+    set t [lmap x [soul::memory::top_topics #test 5] {lindex $x 0}]
+    list [expr {"pipeline" in $t}] [expr {"again" in $t}] [expr {"because" in $t}]
+} -result {1 0 0}
+
+# --- languages ---------------------------------------------------------------------
+
+test soul-27 {language detection: clear lines are recognised, short ones are not} -setup { t::boot } -body {
+    lmap t [list "hola, que tal estas hoy?" "hi, how are you doing today?" "ok" "lol" \
+                 "ma\u00f1ana vamos al cine" "the build is broken again"] {
+        lindex [soul::perceive::detect $t] 0
+    }
+} -result {es en {} {} es en}
+
+test soul-28 {answers each person in the language they speak, in the same channel} -setup { t::boot } -body {
+    set es [soul::perceive::line [soul::order_for #test ""] "Meepo: que opinas de la pizza?"]
+    set en [soul::perceive::line [soul::order_for #test ""] "Meepo: what do you think about pizza?"]
+    list [dict get $es intent] [soul::reply_lang #test "" $es] [lindex [dict get $es groups] 0] \
+         [dict get $en intent] [soul::reply_lang #test "" $en] [lindex [dict get $en groups] 0]
+} -result {opinion es pizza opinion en pizza}
+
+test soul-29 {remembers a person's language for ambiguous lines} -setup { t::boot } -body {
+    foreach l {"hola a todos, que tal" "pues yo estoy muy bien, gracias" "esto es una pasada de verdad"} { t::talk pepe $l }
+    set p [soul::perceive::line [soul::order_for #test *!*@p.example] "ok Meepo"]
+    list [soul::memory::person_lang *!*@p.example] [soul::reply_lang #test *!*@p.example $p]
+} -result {es es}
+
+test soul-30 {spontaneous remarks use the language the channel speaks} -setup { t::boot } -body {
+    set before [soul::chan_lang #test]
+    foreach l {"hola a todos, que tal" "pues yo estoy muy bien" "esto es una pasada" "que hacemos hoy"} { t::talk ana $l }
+    list $before [soul::chan_lang #test]
+} -result {en es}
+
+test soul-31 {soul.langs restricts and autolang = no disables switching} -body {
+    t::boot "\[channel #test\]\nsoul.langs = en de\n"
+    set p [soul::perceive::line {en} "hola, que tal estas hoy?"]
+    set a [soul::reply_lang #test "" $p]
+    t::boot "\[channel #test\]\nsoul.autolang = no\nsoul.lang = es\n"
+    set p [soul::perceive::line {en} "hi, how are you doing today?"]
+    list $a [soul::reply_lang #test "" $p]
+} -result {en es}
+
+# --- opinions --------------------------------------------------------------------
+
+test soul-32 {has stable opinions and answers when asked} -setup { t::boot } -body {
+    set a [soul::memory::opinion_of pizza]
+    set b [soul::memory::opinion_of pizza]
+    set o [t::until_reply pepe "Meepo: what do you think about pizza?"]
+    list [expr {$a == $b}] [string match "*pizza*" [join $o]] [string match "*reply.opinion*" [t::last_why]]
+} -result {1 1 1}
+
+test soul-33 {opinions shift with how the channel talks about things} -setup { t::boot } -body {
+    set before [soul::memory::opinion_of sushi]
+    foreach i {1 2 3 4 5 6} { t::talk ana "sushi is great, awesome and perfect $i" }
+    expr {[soul::memory::opinion_of sushi] > $before + 0.2}
+} -result 1
+
+# --- channel mood ------------------------------------------------------------------
+
+test soul-34 {a gloomy channel lowers its mood and gets comforted} -setup {
+    t::boot "\[soul\]\nagreeableness = 90\n"
+} -body {
+    set v0 $::soul::mind::valence
+    foreach i {1 2 3 4 5 6 7 8} { t::talk ana "this is awful, i hate it, everything is broken and terrible $i" 5 }
+    set vibe [soul::mind::vibe_of #test]
+    set o {}
+    for {set i 0} {$i < 8 && ![llength $o]} {incr i} {
+        sim::advance 60
+        set o [lsearch -all -inline -glob [sim::out] "PRIVMSG*"]
+        sim::pub ana #test "still awful and terrible here"
+    }
+    list [expr {$vibe < -0.35}] [expr {$::soul::mind::valence < $v0}] [llength $o] \
+         [string match "*vibe.comfort*" [join [soul::behave::explain #test 20]]]
+} -result {1 1 1 1}
+
+# --- anniversaries and milestones --------------------------------------------------
+
+test soul-35 {celebrates the anniversary of meeting someone, once} -setup { t::boot } -body {
+    t::talk pepe "hello there"
+    set r [soul::memory::get_rel *!*@p.example]
+    dict set r since [expr {[unixtime] - 365 * 86400}]
+    dict set ::soul::memory::rel *!*@p.example $r
+    set a [t::talk pepe "good evening folks"]
+    set b [t::talk pepe "anyway"]
+    list [string match "*1 year*" [join $a]] [llength $b]
+} -result {1 0}
+
+test soul-36 {celebrates interaction milestones} -setup { t::boot } -body {
+    t::talk pepe "hello there"
+    dict set ::soul::memory::rel *!*@p.example n 99
+    set o [t::talk pepe "just passing by"]
+    string match "*100*" [join $o]
+} -result 1
+
+test soul-37 {celebrates the channel's anniversary in the morning} -setup { t::boot } -body {
+    t::talk pepe "hello there"
+    dict set ::soul::memory::chanmeta #test since [expr {[unixtime] - 2 * 365 * 86400 - 86400}]
+    sim::advance [expr {10 * 3600 + 120}]
+    set o [lsearch -all -inline -glob [sim::out] "PRIVMSG*"]
+    string match "*2 year*" [join $o]
+} -result 1
+
+test soul-38 {language detection accuracy over 30 real-world lines in 6 languages} -setup { t::boot } -body {
+    set fh [open [file join $::testenv::root tests fixtures soul-langs.txt] r]
+    fconfigure $fh -encoding utf-8
+    set ok 0; set wrong {}; set n 0
+    foreach line [split [read $fh] "
+"] {
+        if {$line eq "" || [string index $line 0] eq "#"} continue
+        regexp {^(\S+) (.*)$} $line -> lang text
+        incr n
+        set d [lindex [soul::perceive::detect $text] 0]
+        if {$d eq $lang} { incr ok } elseif {$d ne ""} { lappend wrong "$lang->$d" }
+    }
+    close $fh
+    list $n [expr {$ok >= 28}] $wrong
+} -result {30 1 {}}
+
+test soul-39 {a line in an unclear language is still answered in the language its intent belongs to} -setup { t::boot } -body {
+    set p [soul::perceive::line {en} "Meepo: qu'est-ce que tu penses de la pizza ?"]
+    list [dict get $p intent] [dict get $p lang] [soul::reply_lang #test "" $p]
+} -result {opinion fr fr}
+
+testenv::cleanup
+cleanupTests
