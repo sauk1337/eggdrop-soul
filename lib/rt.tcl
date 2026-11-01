@@ -16,7 +16,7 @@
 # Nothing here evaluates user text or configuration as code.
 
 namespace eval ::soul::rt {
-    variable version   1.0.0
+    variable version   1.0.1
     variable clock_cmd      ;# test hook: command prefix returning epoch ms
     if {![info exists clock_cmd]} { set clock_cmd "" }
     variable datadir ""

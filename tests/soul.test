@@ -377,5 +377,16 @@ test soul-39 {a line in an unclear language is still answered in the language it
     list [dict get $p intent] [dict get $p lang] [soul::reply_lang #test "" $p]
 } -result {opinion fr fr}
 
+test soul-name-first {name first without punctuation, leading inverted marks, "olvida lo del"} -body {
+    set e [format %c 233]
+    set q [format %c 191]
+    set out {}
+    foreach s [list "Meepo wake up" "Meepo despierta" "Meepo, ${q}qu${e} es el t${e}?" "Meepo: olvida lo del t${e}" "Meepo tell me a joke"] {
+        set p [soul::perceive::line {en es} $s]
+        lappend out [list [dict get $p addressed] [dict get $p intent] [lmap g [dict get $p groups] { soul::memory::fact_key $g }]]
+    }
+    set out
+} -result [list {prefix coffee {}} {prefix coffee {}} [list prefix ask [list "t[format %c 233]"]] [list prefix forget [list "t[format %c 233]"]] {prefix joke {}}]
+
 testenv::cleanup
 cleanupTests

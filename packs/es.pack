@@ -8,7 +8,7 @@
 - ^(?:recuerda|aprende|apunta|memoriza) que (.+?) (?:es|son|significa) (.+)$
 
 [intent.forget]
-- ^olvida (?:lo de |que )?(.+?)\s*[.!]*$
+- ^olvida (?:lo del |lo de |que )?(.+?)\s*[.!]*$
 
 [intent.whoareyou]
 - (?:qui[eé]n|qu[eé]) eres

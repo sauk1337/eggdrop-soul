@@ -38,6 +38,9 @@ proc ::soul::perceive::addressing {text} {
     if {[regexp -nocase "^\\s*@?(?:$alt)\\s*\[:,>\]+\\s*(.*)\$" $text -> body]} {
         return [list prefix $body]
     }
+    if {[regexp -nocase "^\\s*@?(?:$alt)\\s+(\\S.*)\$" $text -> body]} {
+        return [list prefix $body]
+    }
     if {[regexp -nocase "^(.*?)\[\\s,\]+@?(?:$alt)\\s*(\[?!.\]*)\\s*\$" $text -> body punct]} {
         return [list mention "$body$punct"]
     }
@@ -123,11 +126,13 @@ proc ::soul::perceive::line {order text {private 0}} {
     } else {
         lassign [addressing $text] mode body
     }
-    set norm [normalize $body]
+    # A leading inverted mark (Spanish) must not hide an anchored intent.
+    set ibody [string trimleft $body " \t\u00bf\u00a1"]
+    set norm [normalize $ibody]
     set words [regexp -all -inline {[[:alpha:]]+} $norm]
     lassign [detect $body] detected conf
     set langs [lang_order $detected $order]
-    lassign [match_intent $langs $body $norm 0] intent groups ilang
+    lassign [match_intent $langs $ibody $norm 0] intent groups ilang
     # The language of the line: where an intent matched, else the detection.
     set lang [expr {$ilang ne "" ? $ilang : $detected}]
     set slang [expr {$lang ne "" ? $lang : [lindex $langs 0]}]

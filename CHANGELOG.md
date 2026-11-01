@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — 2026-11-01
+
+- Fixed: a line that starts with the bot's name without punctuation ("soul wake up") is now addressed like "soul: wake up", so anchored intents work.
+- Fixed: a leading inverted question or exclamation mark ("soul, ¿qué es el té?") no longer hides the intent.
+- Fixed (es): "olvida lo del X" now forgets X.
+- Docs: new README with examples, command reference with real output (docs/COMMANDS.md, docs/COMANDOS.md).
+
 ## 1.0.0 — 2026-10-31
 
 First standalone release (previously developed as a module of a larger Eggdrop script package).
